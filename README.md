@@ -40,8 +40,12 @@ Extension Attribute Data Type: `String`
 
 Extension Attribute Input Type: `Text Field`  
 
-<p align="center">
+<!-- <p align="center">
   <img src="/images/ExtensionAttribute.png" width="900;"/>
+</p> -->
+
+<p align="center">
+  <img src="/images/ExtensionAttribute.png"/>
 </p>
 
 ### User Smart Group:

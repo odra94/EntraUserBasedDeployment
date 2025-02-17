@@ -52,8 +52,12 @@ Extension Attribute Input Type: `Text Field`
 
 Create a smart user group that is based on the extension attribute you created. You will use this as the scope group in your policy.  
 
-<p align="center">
+<!-- <p align="center">
   <img src="/images/SmartUserGroup.png" width="900;"/>
+</p> -->
+
+<p align="center">
+  <img src="/images/SmartUserGroup.png"/>
 </p>
 
 ### Secrets Needed:

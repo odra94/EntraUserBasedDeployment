@@ -40,10 +40,6 @@ Extension Attribute Data Type: `String`
 
 Extension Attribute Input Type: `Text Field`  
 
-<!-- <p align="center">
-  <img src="/images/ExtensionAttribute.png" width="900;"/>
-</p> -->
-
 <p align="center">
   <img src="/images/ExtensionAttribute.png"/>
 </p>
@@ -51,10 +47,6 @@ Extension Attribute Input Type: `Text Field`
 ### User Smart Group:
 
 Create a smart user group that is based on the extension attribute you created. You will use this as the scope group in your policy.  
-
-<!-- <p align="center">
-  <img src="/images/SmartUserGroup.png" width="900;"/>
-</p> -->
 
 <p align="center">
   <img src="/images/SmartUserGroup.png"/>

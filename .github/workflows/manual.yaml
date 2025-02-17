@@ -1,0 +1,40 @@
+# This is a basic workflow that is manually triggered. You can modify it to automate it to your liking.
+
+name: Manual Test
+
+# Controls when the action will run. Workflow runs when manually triggered using the UI
+# or API.
+on:
+  workflow_dispatch:
+
+jobs:
+  prepare-environment:
+    # The type of runner that the job will run on
+    runs-on: macos-15
+    defaults:
+      run:
+        shell: bash
+        working-directory: scripts
+
+    env:
+      GRAPH_APPLICATION_ID: ${{ secrets.GRAPH_APPLICATION_ID }}
+      GRAPH_CLIENT_SECRET: ${{ secrets.GRAPH_CLIENT_SECRET }}
+      GRAPH_GROUP_ID: ${{ secrets.GRAPH_GROUP_ID }}
+      GRAPH_TENANT_ID: ${{ secrets.GRAPH_TENANT_ID }}
+      JAMF_PROD_CLIENT_ID: ${{ secrets.JAMF_PROD_CLIENT_ID }}
+      JAMF_PROD_CLIENT_SECRET: ${{ secrets.JAMF_PROD_CLIENT_SECRET }}
+      JAMF_PROD_GROUP_ID: ${{ secrets.JAMF_PROD_GROUP_ID }}
+      JAMF_PROD_URL: ${{ secrets.JAMF_PROD_URL }}
+      JAMF_TEST_CLIENT_ID: ${{ secrets.JAMF_TEST_CLIENT_ID }}
+      JAMF_TEST_CLIENT_SECRET: ${{ secrets.JAMF_TEST_CLIENT_SECRET }}
+      JAMF_TEST_GROUP_ID: ${{ secrets.JAMF_TEST_GROUP_ID }}
+      JAMF_TEST_URL: ${{ secrets.JAMF_TEST_URL }}
+
+    steps:
+      # Step to check out the repository
+      - name: Check out the repository to the runner
+        uses: actions/checkout@v4
+
+      # Step to run the script
+      - name: Run Update_VAP_Attribute_Actions.zsh
+        run: ./Update_VAP_Attribute_Actions.zsh

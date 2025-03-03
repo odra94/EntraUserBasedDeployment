@@ -82,6 +82,20 @@ invalidateToken() {
 #   username (string): username to update
 updateUserEATrue() {
     local email="$1"
+    
+    # Check if the user exists
+    local user_check_response=$(curl --silent --location --request GET \
+        --url "$jamf_url/JSSResource/users/email/$email" \
+        -H "Authorization: Bearer $access_token" \
+        -H 'accept: application/xml')
+    
+    if [[ "$user_check_response" == *"Not Found"* ]]; then
+        echo "User with email $email not found."
+        echo ""
+        return
+    fi
+    
+    # If user exists, proceed to update
     local xml_data="
     <user>
         <extension_attributes>
@@ -94,12 +108,14 @@ updateUserEATrue() {
         </extension_attributes>
     </user>
     "
-    curl --request PUT \
+    
+    curl --silent --location --request PUT \
         --url "$jamf_url/JSSResource/users/email/$email" \
         -H "Authorization: Bearer $access_token" \
         -H 'accept: application/xml' \
         -H 'Content-Type: application/xml' \
         --data "$xml_data"
+    echo "\nAdded EA for $email"
 }
 
 # Update a user's EA to false
@@ -108,6 +124,20 @@ updateUserEATrue() {
 #   username (string): username to update
 updateUserEAFalse() {
     local email="$1"
+    
+    # Check if the user exists
+    local user_check_response=$(curl --silent --location --request GET \
+        --url "$jamf_url/JSSResource/users/email/$email" \
+        -H "Authorization: Bearer $access_token" \
+        -H 'accept: application/xml')
+    
+    if [[ "$user_check_response" == *"Not Found"* ]]; then
+        echo "User with email $email not found."
+        echo ""
+        return
+    fi
+    
+    # If user exists, proceed to update
     local xml_data="
     <user>
         <extension_attributes>
@@ -120,12 +150,13 @@ updateUserEAFalse() {
         </extension_attributes>
     </user>
     "
-    curl --request PUT \
+    curl --silent --location --request PUT \
         --url "$jamf_url/JSSResource/users/email/$email" \
         -H "Authorization: Bearer $access_token" \
         -H 'accept: application/xml' \
         -H 'Content-Type: application/xml' \
         --data "$xml_data"
+    echo "\nRemoved EA for $email"
 }
 
 
@@ -134,7 +165,7 @@ updateUserEAFalse() {
 # Gets a list of all users in the smart group and extracts their email addresses
 # using xmllint. The email addresses are then saved to the jamf_email_addresses array.
 getJamfUserEmails() {
-    group_response=$(curl -X 'GET' --silent \
+    group_response=$(curl --silent --location -X 'GET' \
   "https://tamutest.jamfcloud.com/JSSResource/usergroups/id/$smart_group_id" \
   -H "accept: application/xml" \
   -H "Authorization: Bearer $access_token")
@@ -245,10 +276,63 @@ processRemovableEAUsers() {
     fi
 }
 
-#############################
-# Set up the Microsoft environment
-#############################
+# Process a list of new EA users from a CSV file. This function is a modified version of the processNewEAUsers function
+# that reads email addresses from a CSV file.
+#
+# Args:
+#   emails_csv (string): path to a CSV file containing email addresses of users
+#                        to add to EA
+processNewEAUsersFromCSV() {
+    local emails_csv="$1"
+    if [ ! -f "$emails_csv" ]; then
+        echo "CSV file not found"
+        exit 1
+    else
+        # Use tail to skip the header (first line)
+        tail -n +2 "$emails_csv" | while IFS=, read -r email; do
+            echo "Read email: $email"
+            if [ -n "$email" ]; then
+            updateUserEATrue "$email"
+            echo "Added EA for $email"
+            else
+                echo "Empty email address found"
+            fi
+        done
+    fi
+}
 
+# Process a list of removable EA users from a CSV file. This function reads
+# email addresses from a CSV file and updates their EA status to false.
+#
+# Args:
+#   emails_csv (string): path to a CSV file containing email addresses of users
+#                        to remove from EA
+processRemovableEAUsersFromCSV() {
+    local emails_csv="$1"
+    if [ ! -f "$emails_csv" ]; then
+        echo "CSV file not found"
+        exit 1
+    else
+        # Use tail to skip the header (first line)
+        tail -n +2 "$emails_csv" | while IFS=, read -r email; do
+            echo "Read email: $email"
+            if [ -n "$email" ]; then
+            updateUserEAFalse "$email"
+                echo "Removed EA for $email"
+            else
+                echo "Empty email address found"
+            fi
+        done
+    fi
+}
+
+# Process a Microsoft Entra user group.
+#
+# This function processes a Microsoft Entra user group by first setting up
+# the Microsoft Graph environment, then getting the group members of the
+# specified group ID, writing the members to a file, and printing the file
+# contents.
+processMicrosEntraUserGroup() {
 setGraphEnvironment
 
 # echo "Group ID: $graph_group_id"
@@ -262,49 +346,63 @@ writeGraphGroupMembersFile
 
 echo "Graph Group Members File:"
 cat "$graph_output"
+}
 
-################################
-# Process the Test server
-################################
 
-# Select the server
-# False selects the test server
+# Process the specified server (production or test).
+#
+# This function processes the specified server by setting up the Jamf
+# environment, getting the access token, getting the list of users in the
+# smart group, writing the list of users to a file, getting the difference
+# between the two lists of users, figuring out which users are new and which
+# users are removable, processing those users, and then cleaning up.
+processServer() {
+    local production=$1
+
+    # Set Environment
+    setJamfEnvironment $production
+
+    # Get Access Token
+    getAccessToken
+
+    getJamfUserEmails
+
+    echo ""
+    echo "Jamf Group Members: ${jamf_email_addresses[@]}"
+    echo ""
+
+    writeJamfUserEmailsFile
+
+    echo "Jamf Group Members File:"
+    cat "$jamf_output"
+
+    getDifference
+
+    echo ""
+    echo "Difference: ${difference[@]}"
+    echo ""
+
+    getNewEAUsers
+
+    getRemovableEAUsers
+
+    processRemovableEAUsers
+
+    processNewEAUsers
+
+    deleteJamfUserEmailsFile
+
+    deleteGraphGroupMembersFile
+
+    invalidateToken
+}
+
+################################################################################
+# Run the Workflow
+################################################################################
+
+# Process the Test Server
 PROD=false
+processMicrosEntraUserGroup
 
-# Set Environment
-setJamfEnvironment $PROD
-
-# Get Access Token
-getAccessToken
-
-getJamfUserEmails
-
-echo ""
-echo "Jamf Group Members: ${jamf_email_addresses[@]}"
-echo ""
-
-writeJamfUserEmailsFile
-
-echo "Jamf Group Members File:"
-cat "$jamf_output"
-
-getDifference
-
-echo ""
-echo "Difference: ${difference[@]}"
-echo ""
-
-
-getNewEAUsers
-
-getRemovableEAUsers
-
-processRemovableEAUsers
-
-processNewEAUsers
-
-deleteJamfUserEmailsFile
-
-deleteGraphGroupMembersFile
-
-invalidateToken
+processServer $PROD

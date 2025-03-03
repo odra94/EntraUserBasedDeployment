@@ -36,5 +36,5 @@ jobs:
         uses: actions/checkout@v4
 
       # Step to run the script
-      - name: Run Update_VAP_Attribute_Actions.zsh
-        run: ./Update_VAP_Attribute_Actions.zsh
+      - name: Run Update_EA_Attribute_Actions.zsh
+        run: ./Update_EA_Attribute_Actions.zsh

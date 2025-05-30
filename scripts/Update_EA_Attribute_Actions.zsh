@@ -216,11 +216,23 @@ setGraphEnvironment() {
 # Function to get members of a group from Microsoft Graph
 getGraphGroupMembers() {
     local group_id="$1"
-    response=$(curl --silent --location --request GET "https://graph.microsoft.com/v1.0/groups/$group_id/members?\$select=mail" \
-        --header "Authorization: Bearer $graph_access_token" \
-        --header "Content-Type: application/json")
+    local url="https://graph.microsoft.com/v1.0/groups/$group_id/members?\$select=mail&\$top=999"
 
-    microsoft_email_addresses=($(echo "$response" | jq -r '.value[] | .mail' | sort -u))
+    while [ -n "$url" ]; do
+        response=$(curl --silent --location --request GET "$url" \
+            --header "Authorization: Bearer $graph_access_token" \
+            --header "Content-Type: application/json")
+
+        # Extract email addresses and add them to the array
+        email_addresses=($(echo "$response" | jq -r '.value[] | .mail'))
+        microsoft_email_addresses+=("${email_addresses[@]}")
+
+        # Get the next page URL from @odata.nextLink
+        url=$(echo "$response" | jq -r '."@odata.nextLink"')
+    done
+
+    # Remove duplicates and sort the email addresses
+    microsoft_email_addresses=($(echo "${microsoft_email_addresses[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 }
 
 writeGraphGroupMembersFile() {
